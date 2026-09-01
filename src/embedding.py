@@ -5,13 +5,18 @@ try:
 except ImportError:
     Embeddings = object
 
-from sentence_transformers import SentenceTransformer
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None
 
 
 class LocalSentenceTransformerEmbeddings(Embeddings):
     """Clean SentenceTransformer embedding wrapper for LangChain vector stores."""
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+        if SentenceTransformer is None:
+            raise ImportError("Package 'sentence-transformers' is not installed. Please run: pip install sentence-transformers")
         print(f"[INFO] Initializing SentenceTransformer model: '{model_name}'...")
         self.model = SentenceTransformer(model_name)
 
