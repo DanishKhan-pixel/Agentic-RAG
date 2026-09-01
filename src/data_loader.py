@@ -1,9 +1,26 @@
 import os
 from pathlib import Path
-from typing import List
-from langchain_core.documents import Document
-from langchain_community.document_loaders import PyPDFLoader, TextLoader, CSVLoader, Docx2txtLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from typing import List, Any
+
+
+try:
+    from langchain_core.documents import Document
+except ImportError:
+    Document = Any
+
+try:
+    from langchain_community.document_loaders import PyPDFLoader, TextLoader, CSVLoader, Docx2txtLoader
+except ImportError:
+    PyPDFLoader = TextLoader = CSVLoader = Docx2txtLoader = None
+
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:
+    try:
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+    except ImportError:
+        RecursiveCharacterTextSplitter = None
+
 
 LOADERS = {
     ".pdf": PyPDFLoader,
