@@ -1,76 +1,62 @@
 import os
-import faiss
-import numpy as np
-import pickle
-from typing import List, Any
-from sentence_transformers import SentenceTransformer
-from src.embedding import EmbeddingPipeline
+from typing import List, Optional
+from langchain_core.documents import Document
+from langchain_community.vectorstores import FAISS
+from src.embedding import get_embedding_model
 
 class FaissVectorStore:
-    def __init__(self, persist_dir: str = "faiss_store", embedding_model: str = "all-MiniLM-L6-v2", chunk_size: int = 1000, chunk_overlap: int = 200):
+    """FAISS VectorStore manager using LangChain FAISS abstractions."""
+
+    def __init__(self, persist_dir: str = "faiss_store", embedding_model: str = "all-MiniLM-L6-v2"):
         self.persist_dir = persist_dir
-        os.makedirs(self.persist_dir, exist_ok=True)
-        self.index = None
-        self.metadata = []
-        self.embedding_model = embedding_model
-        self.model = SentenceTransformer(embedding_model)
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        print(f"[INFO] Loaded embedding model: {embedding_model}")
+        self.embeddings = get_embedding_model(embedding_model)
+        self.vectorstore: Optional[FAISS] = None
 
-    def build_from_documents(self, documents: List[Any]):
-        print(f"[INFO] Building vector store from {len(documents)} raw documents...")
-        emb_pipe = EmbeddingPipeline(model_name=self.embedding_model, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
-        chunks = emb_pipe.chunk_documents(documents)
-        embeddings = emb_pipe.embed_chunks(chunks)
-        metadatas = [{"text": chunk.page_content} for chunk in chunks]
-        self.add_embeddings(np.array(embeddings).astype('float32'), metadatas)
+    def build_from_documents(self, documents: List[Document]) -> FAISS:
+        """Create FAISS index from document chunks and save locally."""
+        if not documents:
+            raise ValueError("No documents provided to build vector store.")
+        print(f"[INFO] Building FAISS vector store from {len(documents)} chunks...")
+        self.vectorstore = FAISS.from_documents(documents, self.embeddings)
         self.save()
-        print(f"[INFO] Vector store built and saved to {self.persist_dir}")
-
-    def add_embeddings(self, embeddings: np.ndarray, metadatas: List[Any] = None):
-        dim = embeddings.shape[1]
-        if self.index is None:
-            self.index = faiss.IndexFlatL2(dim)
-        self.index.add(embeddings)
-        if metadatas:
-            self.metadata.extend(metadatas)
-        print(f"[INFO] Added {embeddings.shape[0]} vectors to Faiss index.")
+        return self.vectorstore
 
     def save(self):
-        faiss_path = os.path.join(self.persist_dir, "faiss.index")
-        meta_path = os.path.join(self.persist_dir, "metadata.pkl")
-        faiss.write_index(self.index, faiss_path)
-        with open(meta_path, "wb") as f:
-            pickle.dump(self.metadata, f)
-        print(f"[INFO] Saved Faiss index and metadata to {self.persist_dir}")
+        """Save FAISS index to persist_dir."""
+        if self.vectorstore:
+            os.makedirs(self.persist_dir, exist_ok=True)
+            self.vectorstore.save_local(self.persist_dir)
+            print(f"[INFO] Saved FAISS vector store to '{self.persist_dir}'")
 
-    def load(self):
-        faiss_path = os.path.join(self.persist_dir, "faiss.index")
-        meta_path = os.path.join(self.persist_dir, "metadata.pkl")
-        self.index = faiss.read_index(faiss_path)
-        with open(meta_path, "rb") as f:
-            self.metadata = pickle.load(f)
-        print(f"[INFO] Loaded Faiss index and metadata from {self.persist_dir}")
+    def load(self) -> bool:
+        """Load FAISS index from persist_dir if it exists."""
+        if os.path.exists(self.persist_dir):
+            try:
+                self.vectorstore = FAISS.load_local(
+                    self.persist_dir,
+                    self.embeddings,
+                    allow_dangerous_deserialization=True
+                )
+                print(f"[INFO] Loaded FAISS vector store from '{self.persist_dir}'")
+                return True
+            except Exception as e:
+                print(f"[WARN] Could not load vector store from '{self.persist_dir}': {e}")
+        return False
 
-    def search(self, query_embedding: np.ndarray, top_k: int = 5):
-        D, I = self.index.search(query_embedding, top_k)
-        results = []
-        for idx, dist in zip(I[0], D[0]):
-            meta = self.metadata[idx] if idx < len(self.metadata) else None
-            results.append({"index": idx, "distance": dist, "metadata": meta})
-        return results
+    def search(self, query: str, top_k: int = 4) -> List[Document]:
+        """Perform similarity search for a query string."""
+        if not self.vectorstore:
+            print("[WARN] Vector store is not loaded.")
+            return []
+        return self.vectorstore.similarity_search(query, k=top_k)
 
-    def query(self, query_text: str, top_k: int = 5):
-        print(f"[INFO] Querying vector store for: '{query_text}'")
-        query_emb = self.model.encode([query_text]).astype('float32')
-        return self.search(query_emb, top_k=top_k)
 
-# Example usage
 if __name__ == "__main__":
-    from data_loader import load_all_documents
-    docs = load_all_documents("data")
-    store = FaissVectorStore("faiss_store")
-    store.build_from_documents(docs)
-    store.load()
-    print(store.query("What is attention mechanism?", top_k=3))
+    from src.data_loader import load_and_split_documents
+    chunks = load_and_split_documents("data")
+    if chunks:
+        store = FaissVectorStore("faiss_store")
+        store.build_from_documents(chunks)
+        results = store.search("What is attention mechanism?", top_k=2)
+        print(f"[INFO] Found {len(results)} search results.")
+
