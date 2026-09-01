@@ -2,7 +2,12 @@ import os
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
+
+try:
+    from langchain_openai import ChatOpenAI
+except ImportError:
+    ChatOpenAI = None
+
 from src.vectorstore import FaissVectorStore
 from src.data_loader import load_and_split_documents
 
@@ -44,12 +49,13 @@ class RAGChatbot:
         if groq_key and groq_key.strip():
             self.llm = ChatGroq(model_name=llm_model, groq_api_key=groq_key, temperature=0.2)
             print(f"[INFO] ChatGroq LLM initialized with model '{llm_model}'")
-        elif openai_key and openai_key.strip():
+        elif openai_key and openai_key.strip() and ChatOpenAI is not None:
             self.llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=openai_key, temperature=0.2)
             print("[INFO] ChatOpenAI LLM initialized with model 'gpt-3.5-turbo'")
         else:
             self.llm = None
             print("[WARN] No GROQ_API_KEY or OPENAI_API_KEY found in .env file. Running in retrieval-only mode.")
+
 
     def chat(self, query: str, top_k: int = 4) -> Dict[str, Any]:
         """Query the vectorstore and generate an LLM response with chat history."""

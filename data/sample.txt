@@ -1,0 +1,9 @@
+# Attention Mechanism and RAG Overview
+
+The Attention Mechanism in Deep Learning was introduced in the seminal paper "Attention Is All You Need" (Vaswani et al., 2017). It allows sequence models to dynamically weight different input tokens depending on their relevance to the current prediction step, eliminating the need for recurrent networks like LSTMs.
+
+Retrieval-Augmented Generation (RAG) is a pattern that combines Information Retrieval with Large Language Models (LLMs).
+1. Vector Embeddings: Documents are split into chunks and converted into dense vector representations.
+2. Vector Indexing: Embeddings are stored in vector databases such as FAISS, Chroma, or Pinecone.
+3. Retrieval: A user query is embedded and the top matching document chunks are retrieved via vector similarity search.
+4. Generation: The LLM synthesizes a accurate response based on the retrieved context documents.
