@@ -1,6 +1,12 @@
 from typing import List
-from langchain_core.embeddings import Embeddings
+
+try:
+    from langchain_core.embeddings import Embeddings
+except ImportError:
+    Embeddings = object
+
 from sentence_transformers import SentenceTransformer
+
 
 class LocalSentenceTransformerEmbeddings(Embeddings):
     """Clean SentenceTransformer embedding wrapper for LangChain vector stores."""
