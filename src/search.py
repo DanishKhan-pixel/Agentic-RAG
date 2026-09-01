@@ -1,12 +1,23 @@
 import os
 from typing import List, Dict, Any, Tuple
-from dotenv import load_dotenv
-from langchain_groq import ChatGroq
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+
+try:
+    from langchain_groq import ChatGroq
+except ImportError:
+    ChatGroq = None
 
 try:
     from langchain_openai import ChatOpenAI
 except ImportError:
     ChatOpenAI = None
+
 
 from src.vectorstore import FaissVectorStore
 from src.data_loader import load_and_split_documents
@@ -46,9 +57,10 @@ class RAGChatbot:
         groq_key = os.getenv("GROQ_API_KEY")
         openai_key = os.getenv("OPENAI_API_KEY")
 
-        if groq_key and groq_key.strip():
+        if groq_key and groq_key.strip() and ChatGroq is not None:
             self.llm = ChatGroq(model_name=llm_model, groq_api_key=groq_key, temperature=0.2)
             print(f"[INFO] ChatGroq LLM initialized with model '{llm_model}'")
+
         elif openai_key and openai_key.strip() and ChatOpenAI is not None:
             self.llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=openai_key, temperature=0.2)
             print("[INFO] ChatOpenAI LLM initialized with model 'gpt-3.5-turbo'")

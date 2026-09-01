@@ -1,8 +1,19 @@
 import os
 from typing import List, Optional
-from langchain_core.documents import Document
-from langchain_community.vectorstores import FAISS
+
+try:
+    from langchain_core.documents import Document
+except ImportError:
+    Document = None
+
+
+try:
+    from langchain_community.vectorstores import FAISS
+except ImportError:
+    FAISS = None
+
 from src.embedding import get_embedding_model
+
 
 class FaissVectorStore:
     """FAISS VectorStore manager using LangChain FAISS abstractions."""
