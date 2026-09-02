@@ -7,6 +7,7 @@ except ImportError:
 
 try:
     from sentence_transformers import SentenceTransformer
+    
 except ImportError:
     SentenceTransformer = None
 
