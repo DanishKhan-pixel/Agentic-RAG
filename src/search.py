@@ -22,7 +22,6 @@ except ImportError:
 from src.vectorstore import FaissVectorStore
 from src.data_loader import load_and_split_documents
 
-load_dotenv()
 
 SYSTEM_PROMPT = """You are a helpful and knowledgeable RAG Assistant.
 Answer the user's question accurately using ONLY the provided context documents.
